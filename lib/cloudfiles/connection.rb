@@ -132,8 +132,7 @@ module CloudFiles
     #   => {:count=>8, :bytes=>42438527}
     #   cf.bytes
     #   => 42438527
-    def get_info                                         
-      p "getting info"
+    def get_info                            
       response = cfreq("HEAD", @storagehost, @storagepath, @storageport, @storagescheme)
       raise CloudFiles::Exception::InvalidResponse, "Unable to obtain account size" unless (response.code == "204")
       @bytes = response["x-account-bytes-used"].to_i
