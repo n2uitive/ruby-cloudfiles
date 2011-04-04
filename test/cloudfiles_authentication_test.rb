@@ -5,14 +5,31 @@ class CloudfilesAuthenticationTest < Test::Unit::TestCase
   
 
   def test_good_authentication
-    response = {'x-cdn-management-url' => 'http://cdn.example.com/path', 'x-storage-url' => 'http://cdn.example.com/storage', 'authtoken' => 'dummy_token'}
+    response = {'x-cdn-management-url' => 'http://cdn.example.com/path', 'x-storage-url' => 'http://cdn.example.com/storage', 'x-auth-token' => 'dummy_token'}
     response.stubs(:code).returns('204')
     server = mock(:use_ssl= => true, :verify_mode= => true, :start => true, :finish => true)
     server.stubs(:get).returns(response)
     CloudFiles::Authentication.any_instance.stubs(:get_server).returns(server)
     @connection = stub(:authuser => 'dummy_user', :authkey => 'dummy_key', :cdnmgmthost= => true, :cdnmgmtpath= => true, :cdnmgmtport= => true, :cdnmgmtscheme= => true, :storagehost= => true, :storagepath= => true, :storageport= => true, :storagescheme= => true, :authtoken= => true, :authok= => true, :snet? => false, :auth_url => 'https://auth.api.rackspacecloud.com/v1.0', :cdn_available? => true, :cdn_available= => true)
+
     result = CloudFiles::Authentication.new(@connection)
+
     assert_equal result.class, CloudFiles::Authentication
+    assert_equal result.token, 'dummy_token'
+    assert_equal response['x-cdn-management-url'], result.cdn_url
+  end                                      
+  
+  def test_good_authentication_without_cdn
+    response = {'x-storage-url' => 'http://cdn.example.com/storage', 'x-auth-token' => 'dummy_token'}
+    response.stubs(:code).returns('204')
+    server = mock(:use_ssl= => true, :verify_mode= => true, :start => true, :finish => true)
+    server.stubs(:get).returns(response)
+    CloudFiles::Authentication.any_instance.stubs(:get_server).returns(server)
+    @connection = stub(:authuser => 'dummy_user', :authkey => 'dummy_key', :cdnmgmthost= => true, :cdnmgmtpath= => true, :cdnmgmtport= => true, :cdnmgmtscheme= => true, :storagehost= => true, :storagepath= => true, :storageport= => true, :storagescheme= => true, :authtoken= => true, :authok= => true, :snet? => false, :auth_url => 'https://auth.api.rackspacecloud.com/v1.0', :cdn_available? => true, :cdn_available= => true)
+
+    result = CloudFiles::Authentication.new(@connection)
+
+    assert_nil result.cdn_url
   end
   
   def test_snet_authentication

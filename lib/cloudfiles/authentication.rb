@@ -9,12 +9,15 @@ module CloudFiles
     # an CloudFiles::Exception::Authentication exception.
     #
     # Should probably never be called directly.
+    
+    attr_reader :token, :cdn_url, :storage_url
+    
     def initialize(connection)
       parsed_auth_url = URI.parse(connection.auth_url)
       path = parsed_auth_url.path
       hdrhash = { "X-Auth-User" => connection.authuser, "X-Auth-Key" => connection.authkey }
       begin
-        server             = get_server(connection, parsed_auth_url)
+        server = get_server(connection, parsed_auth_url)
 
         if parsed_auth_url.scheme == "https"
           server.use_ssl     = true
@@ -26,21 +29,10 @@ module CloudFiles
       end
       response = server.get(path, hdrhash)
       if (response.code =~ /^20./)
-        if response["x-cdn-management-url"]
-          connection.cdn_available = true
-          connection.cdnmgmthost   = URI.parse(response["x-cdn-management-url"]).host
-          connection.cdnmgmtpath   = URI.parse(response["x-cdn-management-url"]).path
-          connection.cdnmgmtport   = URI.parse(response["x-cdn-management-url"]).port
-          connection.cdnmgmtscheme = URI.parse(response["x-cdn-management-url"]).scheme
-        end
-        connection.storagehost   = set_snet(connection, URI.parse(response["x-storage-url"]).host)
-        connection.storagepath   = URI.parse(response["x-storage-url"]).path
-        connection.storageport   = URI.parse(response["x-storage-url"]).port
-        connection.storagescheme = URI.parse(response["x-storage-url"]).scheme
-        connection.authtoken     = response["x-auth-token"]
-        connection.authok        = true
+        @token = response["x-auth-token"]
+        @storage_url = response["x-storage-url"]
+        @cdn_url = response["x-cdn-management-url"] if response["x-cdn-management-url"]
       else
-        connection.authtoken = false
         raise CloudFiles::Exception::Authentication, "Authentication failed"
       end
       server.finish
@@ -50,14 +42,6 @@ module CloudFiles
 
       def get_server(connection, parsed_auth_url)
         Net::HTTP::Proxy(connection.proxy_host, connection.proxy_port).new(parsed_auth_url.host, parsed_auth_url.port)
-      end
-
-      def set_snet(connection, hostname)
-        if connection.snet?
-          "snet-#{hostname}"
-        else
-          hostname
-        end
       end
   end
 end

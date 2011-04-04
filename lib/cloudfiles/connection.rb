@@ -97,16 +97,16 @@ module CloudFiles
         @auth_url = CloudFiles::AUTH_USA
       end
       @authok = false
-      @http = {}
-      CloudFiles::Authentication.new(self)
+      @http = {}                                  
+      authenticate!
     end
 
     # Returns true if the authentication was successful and returns false otherwise.
     #
     #   cf.authok?
     #   => true
-    def authok?
-      @authok
+    def authok?                                  
+      @authtoken
     end
 
     # Returns true if the library is requesting the use of the Rackspace service network
@@ -132,7 +132,8 @@ module CloudFiles
     #   => {:count=>8, :bytes=>42438527}
     #   cf.bytes
     #   => 42438527
-    def get_info
+    def get_info                                         
+      p "getting info"
       response = cfreq("HEAD", @storagehost, @storagepath, @storageport, @storagescheme)
       raise CloudFiles::Exception::InvalidResponse, "Unable to obtain account size" unless (response.code == "204")
       @bytes = response["x-account-bytes-used"].to_i
@@ -307,7 +308,26 @@ module CloudFiles
     end
 
     private
+                 
+    def authenticate!
+      auth = CloudFiles::Authentication.new(self)
+      storage_uri = URI.parse(auth.storage_url)
+      @storagehost   = set_snet(self, storage_uri.host)
+      @storagepath   = storage_uri.path
+      @storageport   = storage_uri.port
+      @storagescheme = storage_uri.scheme                         
+      @authtoken     = auth.token
 
+      if auth.cdn_url
+        cdn_uri = URI.parse(auth.cdn_url)
+        @cdnmgmthost   = cdn_uri.host
+        @cdnmgmtpath   = cdn_uri.path
+        @cdnmgmtport   = cdn_uri.port
+        @cdnmgmtscheme = cdn_uri.scheme
+        @cdn_available = true
+      end
+    end
+    
     # Sets up standard HTTP headers
     def headerprep(headers = {}) # :nodoc:
       default_headers = {}
@@ -331,6 +351,14 @@ module CloudFiles
         rescue
           raise CloudFiles::Exception::Connection, "Unable to connect to #{server}"
         end
+      end
+    end
+    
+    def set_snet(connection, hostname)
+      if connection.snet?
+        "snet-#{hostname}"
+      else
+        hostname
       end
     end
 

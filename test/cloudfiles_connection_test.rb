@@ -3,13 +3,10 @@ require 'test_helper'
 
 class CloudfilesConnectionTest < Test::Unit::TestCase
   
-  def setup
-    CloudFiles::Authentication.expects(:new).returns(true)
-    @connection = CloudFiles::Connection.new('dummy_user', 'dummy_key')
-    @connection.storagehost = "test.setup.example"
-    @connection.storagepath = "/dummypath/setup"
-    @connection.cdnmgmthost = "test.cdn.example"
-    @connection.cdnmgmtpath = "/dummycdnpath/setup"
+  def setup                                          
+    @auth = auth    
+    CloudFiles::Authentication.expects(:new).returns(@auth)
+    @connection = connection
   end
   
   def test_initialize
@@ -18,10 +15,15 @@ class CloudfilesConnectionTest < Test::Unit::TestCase
   end
   
   def test_authok
-    # This would normally be set in CloudFiles::Authentication
-    assert_equal @connection.authok?, false
-    @connection.expects(:authok?).returns(true)
-    assert_equal @connection.authok?, true
+    assert @connection.authok?, "Should be authenticated."
+  end
+  
+  def test_authok_with_failed_auth    
+    @auth = auth(:token => nil)     
+    CloudFiles::Authentication.expects(:new).returns(@auth)
+    @connection = connection
+    
+    assert !@connection.authok?, "Should not be authenticated."
   end
   
   def test_snet
@@ -287,6 +289,26 @@ class CloudfilesConnectionTest < Test::Unit::TestCase
   end
     
   private
+                          
+  def auth(stubs = {})
+    defaults = {
+      :cdn_url => "http://test.cdn.example/dummycdnpath/setup",
+      :storage_url => "http://test.setup.example/dummypath/setup",
+      :token => 'dummyauthtoken'
+    }
+    @auth = mock    
+    defaults.merge(stubs).each_pair {|k, v| @auth.stubs(k).returns(v) }                            
+    @auth
+  end
+  
+  def connection
+    @connection = CloudFiles::Connection.new('dummy_user', 'dummy_key')
+    @connection.storagehost = "test.setup.example"
+    @connection.storagepath = "/dummypath/setup"
+    @connection.cdnmgmthost = "test.cdn.example"
+    @connection.cdnmgmtpath = "/dummycdnpath/setup"
+    @connection
+  end
   
   def build_net_http_object(args={:code => '204' }, cfreq_expectations={})
     args[:response] = {} unless args[:response]
