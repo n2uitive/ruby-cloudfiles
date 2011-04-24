@@ -4,8 +4,8 @@
 
 require File.dirname(__FILE__) + '/../lib/cloudfiles'
 
-username = "YOUR_USERNAME"
-apikey = "YOUR_API_KEY"
+username = "n2staging"
+apikey = "6e1058098422356c63dcb653e6b9d014"
 
 def assert_test(testtext,bool)
   booltext = (bool)? " PASS" : "*FAIL*" ;
@@ -78,7 +78,7 @@ puts assert_test("    Checking object size",bytes == cloudfilesfilesize)
 
 # Check content type
 content_type = myobj.content_type
-puts assert_test("    Checking object content type",content_type == "text/ruby")
+puts assert_test("    Checking object content type",content_type =~ /text\/ruby/)
 
 # Check metadata
 metadata = myobj.metadata

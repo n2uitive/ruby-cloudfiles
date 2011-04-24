@@ -310,7 +310,11 @@ module CloudFiles
     private
                  
     def authenticate!
-      auth = CloudFiles::Authentication.new(self)
+      auth = CloudFiles::Authentication.new(self, 
+        :url => @auth_url, 
+        :user => @authuser, 
+        :key => @authkey
+      )
       storage_uri = URI.parse(auth.storage_url)
       @storagehost   = set_snet(self, storage_uri.host)
       @storagepath   = storage_uri.path

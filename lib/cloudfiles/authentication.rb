@@ -12,36 +12,40 @@ module CloudFiles
     
     attr_reader :token, :cdn_url, :storage_url
     
-    def initialize(connection)
-      parsed_auth_url = URI.parse(connection.auth_url)
+    def initialize(connection, opts = {})
+      parsed_auth_url = URI.parse(opts[:url])
       path = parsed_auth_url.path
-      hdrhash = { "X-Auth-User" => connection.authuser, "X-Auth-Key" => connection.authkey }
+      hdrhash = { "X-Auth-User" => opts[:user], "X-Auth-Key" => opts[:key] }
       begin
-        server = get_server(connection, parsed_auth_url)
-
-        if parsed_auth_url.scheme == "https"
-          server.use_ssl     = true
-          server.verify_mode = OpenSSL::SSL::VERIFY_NONE
-        end
+        server = get_server(parsed_auth_url, opts)
         server.start
       rescue
         raise CloudFiles::Exception::Connection, "Unable to connect to #{server}"
       end
-      response = server.get(path, hdrhash)
-      if (response.code =~ /^20./)
-        @token = response["x-auth-token"]
-        @storage_url = response["x-storage-url"]
-        @cdn_url = response["x-cdn-management-url"] if response["x-cdn-management-url"]
-      else
-        raise CloudFiles::Exception::Authentication, "Authentication failed"
+
+      begin
+        response = server.get(path, hdrhash)
+        if (response.code =~ /^20./)
+          @token = response["x-auth-token"]
+          @storage_url = response["x-storage-url"]
+          @cdn_url = response["x-cdn-management-url"] if response["x-cdn-management-url"]
+        else
+          raise CloudFiles::Exception::Authentication, "Authentication failed"
+        end
+      ensure
+        server.finish
       end
-      server.finish
     end
 
     private
 
-      def get_server(connection, parsed_auth_url)
-        Net::HTTP::Proxy(connection.proxy_host, connection.proxy_port).new(parsed_auth_url.host, parsed_auth_url.port)
+    def get_server(parsed_auth_url, opts)
+      server = Net::HTTP::Proxy(opts[:proxy_host], opts[:proxy_port]).new(parsed_auth_url.host, parsed_auth_url.port)
+      if parsed_auth_url.scheme == "https"
+        server.use_ssl     = true
+        server.verify_mode = OpenSSL::SSL::VERIFY_NONE
       end
+      server
+    end
   end
 end
