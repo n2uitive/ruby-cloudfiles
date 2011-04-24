@@ -1,65 +1,113 @@
 $:.unshift File.dirname(__FILE__)
 require 'test_helper'
+require 'net/http'
 
 class CloudfilesAuthenticationTest < Test::Unit::TestCase
   
-
+  def setup
+    @response = {
+      'x-cdn-management-url' => 'http://cdn.example.com/path', 
+      'x-storage-url' => 'http://cdn.example.com/storage', 
+      'x-auth-token' => 'dummy_token'
+    }
+    @response.stubs(:code).returns('204')
+    @server = mock()
+  end
+  
   def test_good_authentication
-    response = {'x-cdn-management-url' => 'http://cdn.example.com/path', 'x-storage-url' => 'http://cdn.example.com/storage', 'x-auth-token' => 'dummy_token'}
-    response.stubs(:code).returns('204')
-    server = mock(:use_ssl= => true, :verify_mode= => true, :start => true, :finish => true)
-    server.stubs(:get).returns(response)
-    CloudFiles::Authentication.any_instance.stubs(:get_server).returns(server)
-    @connection = stub(:authuser => 'dummy_user', :authkey => 'dummy_key', :cdnmgmthost= => true, :cdnmgmtpath= => true, :cdnmgmtport= => true, :cdnmgmtscheme= => true, :storagehost= => true, :storagepath= => true, :storageport= => true, :storagescheme= => true, :authtoken= => true, :authok= => true, :snet? => false, :auth_url => 'https://auth.api.rackspacecloud.com/v1.0', :cdn_available? => true, :cdn_available= => true)
+    @server.expects(
+      :use_ssl= => true, :verify_mode= => true, 
+      :start => true, :finish => true, :get => @response
+    )
+    Net::HTTP.stubs(:Proxy => mock(:new => @server))
 
-    result = CloudFiles::Authentication.new(@connection)
+    result = CloudFiles::Authentication.new(@connection, 
+      :url => 'https://auth.api.rackspacecloud.com/v1.0',
+      :user => 'dummy_user',
+      :key => 'dummy_key'
+    )
 
     assert_equal result.class, CloudFiles::Authentication
     assert_equal result.token, 'dummy_token'
-    assert_equal response['x-cdn-management-url'], result.cdn_url
+    assert_equal @response['x-cdn-management-url'], result.cdn_url
   end                                      
   
   def test_good_authentication_without_cdn
-    response = {'x-storage-url' => 'http://cdn.example.com/storage', 'x-auth-token' => 'dummy_token'}
-    response.stubs(:code).returns('204')
-    server = mock(:use_ssl= => true, :verify_mode= => true, :start => true, :finish => true)
-    server.stubs(:get).returns(response)
-    CloudFiles::Authentication.any_instance.stubs(:get_server).returns(server)
-    @connection = stub(:authuser => 'dummy_user', :authkey => 'dummy_key', :cdnmgmthost= => true, :cdnmgmtpath= => true, :cdnmgmtport= => true, :cdnmgmtscheme= => true, :storagehost= => true, :storagepath= => true, :storageport= => true, :storagescheme= => true, :authtoken= => true, :authok= => true, :snet? => false, :auth_url => 'https://auth.api.rackspacecloud.com/v1.0', :cdn_available? => true, :cdn_available= => true)
+    @response.delete('x-cdn-management-url')
+    @server.expects(
+      :use_ssl= => true, :verify_mode= => true, 
+      :start => true, :finish => true, :get => @response
+    )
+    Net::HTTP.stubs(:Proxy => mock(:new => @server))
 
-    result = CloudFiles::Authentication.new(@connection)
+    result = CloudFiles::Authentication.new(@connection, 
+      :url => 'https://auth.api.rackspacecloud.com/v1.0',
+      :user => 'dummy_user',
+      :key => 'dummy_key'
+    )
 
     assert_nil result.cdn_url
   end
   
   def test_snet_authentication
-    response = {'x-cdn-management-url' => 'http://cdn.example.com/path', 'x-storage-url' => 'http://cdn.example.com/storage', 'authtoken' => 'dummy_token'}
-    response.stubs(:code).returns('204')
-    server = mock(:use_ssl= => true, :verify_mode= => true, :start => true, :finish => true)
-    server.stubs(:get).returns(response)
-    CloudFiles::Authentication.any_instance.stubs(:get_server).returns(server)
-    @connection = stub(:authuser => 'dummy_user', :authkey => 'dummy_key', :cdnmgmthost= => true, :cdnmgmtpath= => true, :cdnmgmtport= => true, :cdnmgmtscheme= => true, :storagehost= => true, :storagepath= => true, :storageport= => true, :storagescheme= => true, :authtoken= => true, :authok= => true, :snet? => true, :auth_url => 'https://auth.api.rackspacecloud.com/v1.0', :cdn_available? => true, :cdn_available= => true)
-    result = CloudFiles::Authentication.new(@connection)
+    @server.expects(
+      :use_ssl= => true, :verify_mode= => true, 
+      :start => true, :finish => true, :get => @response
+    )
+    Net::HTTP.stubs(:Proxy => mock(:new => @server))
+
+    result = CloudFiles::Authentication.new(@connection, 
+      :url => 'https://auth.api.rackspacecloud.com/v1.0',
+      :user => 'dummy_user',
+      :key => 'dummy_key'
+    )
+
     assert_equal result.class, CloudFiles::Authentication
   end
   
   def test_bad_authentication
-    response = mock()
-    response.stubs(:code).returns('499')
-    server = mock(:use_ssl= => true, :verify_mode= => true, :start => true)
-    server.stubs(:get).returns(response)
-    CloudFiles::Authentication.any_instance.stubs(:get_server).returns(server)
-    @connection = stub(:authuser => 'bad_user', :authkey => 'bad_key', :authok= => true, :authtoken= => true,  :auth_url => 'https://auth.api.rackspacecloud.com/v1.0', :cdn_available? => true)
+    @response.expects(:code => '499')
+    @server.expects(
+      :use_ssl= => true, :verify_mode= => true, 
+      :start => true, :finish => true, :get => @response
+    )
+    Net::HTTP.stubs(:Proxy => mock(:new => @server))
+
     assert_raises(CloudFiles::Exception::Authentication) do
-      result = CloudFiles::Authentication.new(@connection)
+      result = CloudFiles::Authentication.new(@connection, 
+        :url => 'https://auth.api.rackspacecloud.com/v1.0',
+        :user => 'bad_user',
+        :key => 'bad_key'
+      )
     end
   end
     
   def test_bad_hostname
     Net::HTTP.stubs(:new).raises(CloudFiles::Exception::Connection)
-    @connection = stub(:proxy_host => nil, :proxy_port => nil, :authuser => 'bad_user', :authkey => 'bad_key', :authok= => true, :authtoken= => true, :auth_url => 'https://auth.api.rackspacecloud.com/v1.0', :cdn_available? => true)
+
     assert_raises(CloudFiles::Exception::Connection) do
-      result = CloudFiles::Authentication.new(@connection)
+      CloudFiles::Authentication.new(@connection, 
+        :url => 'https://auth.api.rackspacecloud.com/v1.0',
+        :user => 'dummy_user',
+        :key => 'dummy_key'
+      )
+    end
+  end
+  
+  def test_finishes_request_on_error
+    @server.expects(
+      :use_ssl= => true, :verify_mode= => true, 
+      :start => true, :finish => true
+    )
+    @server.expects(:get).raises(CloudFiles::Exception::IOException)
+    Net::HTTP.stubs(:Proxy => mock(:new => @server))
+
+    assert_raises(CloudFiles::Exception::IOException) do
+      CloudFiles::Authentication.new(@connection, 
+        :url => 'https://auth.api.rackspacecloud.com/v1.0',
+        :user => 'dummy_user',
+        :key => 'dummy_key'
+      )
     end
   end
     

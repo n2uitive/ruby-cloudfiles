@@ -78,7 +78,7 @@ puts assert_test("    Checking object size",bytes == cloudfilesfilesize)
 
 # Check content type
 content_type = myobj.content_type
-puts assert_test("    Checking object content type",content_type == "text/ruby")
+puts assert_test("    Checking object content type",content_type =~ /text\/ruby/)
 
 # Check metadata
 metadata = myobj.metadata
