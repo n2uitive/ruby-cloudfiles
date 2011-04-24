@@ -4,8 +4,8 @@
 
 require File.dirname(__FILE__) + '/../lib/cloudfiles'
 
-username = "n2staging"
-apikey = "6e1058098422356c63dcb653e6b9d014"
+username = "YOUR_USERNAME"
+apikey = "YOUR_API_KEY"
 
 def assert_test(testtext,bool)
   booltext = (bool)? " PASS" : "*FAIL*" ;
